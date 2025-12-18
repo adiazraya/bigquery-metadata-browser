@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metadata Info with JDBC - BigQuery Browser</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔌 Metadata Info with JDBC</h1>
+            <p class="project-name">Project: ehc-alberto-diazraya-35c897</p>
+            <p class="tech-badge">Using: SIMBA BigQuery JDBC Driver</p>
+            <a href="/" class="back-link">← Back to Main Menu</a>
+        </header>
+
+        <div class="content">
+            <!-- Datasets Section -->
+            <div class="section datasets-section">
+                <div class="section-header">
+                    <h2>📊 Datasets</h2>
+                    <button id="refreshDatasetsBtn" class="refresh-btn">🔄 Refresh</button>
+                </div>
+
+                <div id="loadingDatasets" class="loading" style="display: none;">
+                    Loading datasets...
+                </div>
+
+                <div id="datasetsError" class="error" style="display: none;"></div>
+
+                <ul id="datasetsList" class="list"></ul>
+            </div>
+
+            <!-- Tables Section -->
+            <div class="section tables-section">
+                <div class="section-header">
+                    <h2>📋 Tables</h2>
+                    <span id="selectedDataset" class="selected-dataset"></span>
+                </div>
+
+                <div id="loadingTables" class="loading" style="display: none;">
+                    Loading tables...
+                </div>
+
+                <div id="tablesError" class="error" style="display: none;"></div>
+
+                <div id="noDatasetSelected" class="info-message">
+                    ← Select a dataset to view its tables
+                </div>
+
+                <ul id="tablesList" class="list" style="display: none;"></ul>
+            </div>
+
+            <!-- Schema Section (NEW) -->
+            <div class="section schema-section">
+                <div class="section-header">
+                    <h2>🔍 Table Schema</h2>
+                    <span id="selectedTable" class="selected-table"></span>
+                </div>
+
+                <div id="loadingSchema" class="loading" style="display: none;">
+                    Loading schema...
+                </div>
+
+                <div id="schemaError" class="error" style="display: none;"></div>
+
+                <div id="noTableSelected" class="info-message">
+                    ← Select a table to view its schema
+                </div>
+
+                <div id="schemaContent" style="display: none;">
+                    <div id="schemaStats" class="schema-stats"></div>
+                    <table id="schemaTable" class="schema-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Field Name</th>
+                                <th>Type</th>
+                                <th>Mode</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schemaTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>🔌 Connection Method: JDBC/SQL | Backend: Java Spring Boot | Frontend: HTML/CSS/JavaScript</p>
+        </footer>
+    </div>
+
+    <script src="app-jdbc.js"></script>
+</body>
+</html>

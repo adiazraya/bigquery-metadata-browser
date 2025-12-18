@@ -1,0 +1,43 @@
+# Compiled files
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Service account key (IMPORTANT - keep private!)
+*.json
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Build outputs
+build/
+dist/
+out/
+
+# Application specific
+lib/*.jar

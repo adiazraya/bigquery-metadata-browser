@@ -1,0 +1,332 @@
+IncidenciaBQ - BigQuery Dataset & Table Browser
+===============================================
+
+📦 PROJECT STRUCTURE
+====================
+
+IncidenciaBQ/
+│
+├── 📚 DOCUMENTATION (8 files)
+│   ├── README.md                          # Main documentation
+│   ├── GETTING_STARTED.md                 # Quick start for beginners  
+│   ├── QUICKSTART.md                      # Fast reference
+│   ├── DEPLOYMENT.md                      # Heroku deployment guide
+│   ├── TEST.md                            # Testing procedures
+│   ├── PROJECT_OVERVIEW.md                # Technical architecture
+│   ├── PROJECT_SUMMARY.md                 # Complete summary
+│   └── PROJECT_STRUCTURE.txt              # This file
+│
+├── 🔧 CONFIGURATION (7 files)
+│   ├── pom.xml                            # Maven dependencies
+│   ├── Procfile                           # Heroku process definition
+│   ├── system.properties                  # Java version for Heroku
+│   ├── .gitignore                         # Git ignore rules
+│   ├── service-account-key.json.example   # Key template
+│   ├── src/main/resources/
+│   │   ├── application.properties         # Local config
+│   │   └── application-production.properties  # Heroku config
+│   └── (service-account-key.json)         # ← YOU ADD THIS
+│
+├── 🚀 SCRIPTS (2 files)
+│   ├── setup.sh                           # Automated setup
+│   └── run.sh                             # Quick start script
+│
+├── 💻 BACKEND - Java Spring Boot (6 files)
+│   └── src/main/java/com/mercadolibre/incidenciabq/
+│       ├── IncidenciaBQApplication.java   # Main app entry point
+│       │
+│       ├── config/
+│       │   └── BigQueryConfig.java        # Configuration management
+│       │                                  # - Loads service account
+│       │                                  # - JDBC connection setup
+│       │                                  # - Heroku env var handling
+│       │
+│       ├── controller/
+│       │   └── BigQueryController.java    # REST API endpoints
+│       │                                  # - GET /api/bigquery/test
+│       │                                  # - GET /api/bigquery/datasets
+│       │                                  # - GET /api/bigquery/datasets/{id}/tables
+│       │
+│       ├── service/
+│       │   └── BigQueryService.java       # Business logic
+│       │                                  # - listDatasets()
+│       │                                  # - listTables(datasetId)
+│       │                                  # - testConnection()
+│       │
+│       └── model/
+│           ├── Dataset.java               # Dataset data model
+│           └── Table.java                 # Table data model
+│
+└── 🎨 FRONTEND - HTML/CSS/JavaScript (3 files)
+    └── src/main/resources/static/
+        ├── index.html                     # Main UI structure
+        │                                  # - Two-column layout
+        │                                  # - Datasets & Tables panels
+        │                                  
+        ├── styles.css                     # Modern styling
+        │                                  # - Gradient design
+        │                                  # - Animations
+        │                                  # - Responsive layout
+        │
+        └── app.js                         # Dynamic functionality
+                                           # - API calls
+                                           # - UI updates
+                                           # - Event handling
+
+
+🔌 API ENDPOINTS
+================
+
+┌─────────────────────────────────────────────────────────┐
+│ GET /api/bigquery/test                                  │
+│ → Test BigQuery connection                              │
+│ ← "Connection successful!"                              │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ GET /api/bigquery/datasets                              │
+│ → List all datasets in project                          │
+│ ← [{ datasetId: "...", projectId: "...", ... }]        │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ GET /api/bigquery/datasets/{datasetId}/tables           │
+│ → List tables in specific dataset                       │
+│ ← [{ tableId: "...", type: "...", numRows: ... }]      │
+└─────────────────────────────────────────────────────────┘
+
+
+🎯 APPLICATION FLOW
+===================
+
+User Opens Browser (http://localhost:8080)
+    ↓
+┌───────────────────────────────────────────┐
+│  Frontend loads and requests datasets     │
+│  GET /api/bigquery/datasets               │
+└───────────────┬───────────────────────────┘
+                ↓
+┌───────────────────────────────────────────┐
+│  BigQueryController receives request      │
+└───────────────┬───────────────────────────┘
+                ↓
+┌───────────────────────────────────────────┐
+│  BigQueryService.listDatasets()           │
+│  - Connects via SIMBA JDBC                │
+│  - Queries INFORMATION_SCHEMA.SCHEMATA    │
+└───────────────┬───────────────────────────┘
+                ↓
+┌───────────────────────────────────────────┐
+│  BigQuery returns dataset list            │
+└───────────────┬───────────────────────────┘
+                ↓
+┌───────────────────────────────────────────┐
+│  Controller returns JSON to frontend      │
+└───────────────┬───────────────────────────┘
+                ↓
+┌───────────────────────────────────────────┐
+│  Frontend displays datasets in left panel │
+└───────────────────────────────────────────┘
+
+User Clicks Dataset
+    ↓
+┌───────────────────────────────────────────┐
+│  Frontend requests tables                 │
+│  GET /api/bigquery/datasets/X/tables      │
+└───────────────┬───────────────────────────┘
+                ↓
+┌───────────────────────────────────────────┐
+│  BigQueryService.listTables(X)            │
+│  - Queries X.INFORMATION_SCHEMA.TABLES    │
+└───────────────┬───────────────────────────┘
+                ↓
+┌───────────────────────────────────────────┐
+│  Frontend displays tables in right panel  │
+└───────────────────────────────────────────┘
+
+
+🔐 AUTHENTICATION
+=================
+
+Local Development:
+  service-account-key.json (file)
+      ↓
+  GOOGLE_APPLICATION_CREDENTIALS env var
+      ↓
+  BigQueryConfig reads and validates
+      ↓
+  SIMBA JDBC uses for authentication
+
+Heroku Production:
+  service-account-key.json (your computer)
+      ↓
+  heroku config:set GOOGLE_APPLICATION_CREDENTIALS_JSON="$(cat ...)"
+      ↓
+  BigQueryConfig reads env var
+      ↓
+  Creates temp file /tmp/service-account-key.json
+      ↓
+  SIMBA JDBC uses temp file
+
+
+📊 TECHNOLOGY STACK
+===================
+
+┌─────────────────────────────────────────┐
+│            FRONTEND                     │
+│  HTML5 + CSS3 + Vanilla JavaScript      │
+└────────────────┬────────────────────────┘
+                 │ REST API (JSON)
+┌────────────────▼────────────────────────┐
+│         SPRING BOOT 3.2.0               │
+│         (Java 17)                       │
+│                                         │
+│  Controllers → Services → Config        │
+└────────────────┬────────────────────────┘
+                 │ JDBC
+┌────────────────▼────────────────────────┐
+│      SIMBA BigQuery JDBC Driver         │
+│            v1.5.2.1005                  │
+└────────────────┬────────────────────────┘
+                 │ HTTPS
+┌────────────────▼────────────────────────┐
+│         Google BigQuery API             │
+│   Project: ehc-alberto-diazraya-35c897  │
+└─────────────────────────────────────────┘
+
+
+🚀 HOW TO RUN
+=============
+
+Local Development:
+  1. Add service-account-key.json to project root
+  2. Run: ./setup.sh
+  3. Run: ./run.sh
+  4. Open: http://localhost:8080
+
+Heroku Deployment:
+  1. heroku create your-app-name
+  2. heroku config:set GOOGLE_APPLICATION_CREDENTIALS_JSON="$(cat service-account-key.json)"
+  3. git push heroku main
+  4. heroku open
+
+
+✅ FEATURES IMPLEMENTED
+=======================
+
+Backend:
+  ✓ Spring Boot REST API
+  ✓ SIMBA JDBC integration
+  ✓ Service account authentication
+  ✓ Dataset listing
+  ✓ Table listing
+  ✓ Connection testing
+  ✓ Error handling
+  ✓ Logging
+  ✓ Heroku configuration
+
+Frontend:
+  ✓ Responsive two-column layout
+  ✓ Dataset browser
+  ✓ Table viewer
+  ✓ Click interactions
+  ✓ Loading states
+  ✓ Error messages
+  ✓ Smooth animations
+  ✓ Custom scrollbars
+  ✓ Modern gradient design
+  ✓ Mobile-friendly
+
+Deployment:
+  ✓ Maven build configuration
+  ✓ Heroku Procfile
+  ✓ Environment variables
+  ✓ Setup scripts
+  ✓ Automated deployment
+
+Documentation:
+  ✓ Comprehensive README
+  ✓ Quick start guide
+  ✓ Deployment guide
+  ✓ Testing guide
+  ✓ Architecture overview
+  ✓ Project summary
+
+
+📦 MAVEN DEPENDENCIES
+=====================
+
+• spring-boot-starter-web (REST API)
+• googlebigquery-jdbc42 (SIMBA driver)
+• google-cloud-bigquery (BigQuery SDK)
+• lombok (Code simplification)
+• spring-boot-starter-test (Testing)
+
+
+📈 PROJECT STATISTICS
+=====================
+
+Files:
+  • Java classes: 6
+  • Frontend files: 3
+  • Config files: 7
+  • Documentation: 8
+  • Scripts: 2
+  • TOTAL: 26+ files
+
+Lines of Code:
+  • Backend: ~600 lines
+  • Frontend: ~400 lines
+  • Config: ~200 lines
+  • Docs: ~2000+ lines
+  • TOTAL: ~3200+ lines
+
+
+🎓 DOCUMENTATION GUIDE
+======================
+
+Start Here → GETTING_STARTED.md
+             (Step-by-step for beginners)
+
+Quick Setup → QUICKSTART.md
+              (Fast reference)
+
+Full Details → README.md
+               (Complete documentation)
+
+Testing → TEST.md
+          (How to test locally)
+
+Deploy → DEPLOYMENT.md
+         (Heroku deployment)
+
+Technical → PROJECT_OVERVIEW.md
+            (Architecture details)
+
+Summary → PROJECT_SUMMARY.md
+          (Feature overview)
+
+This File → PROJECT_STRUCTURE.txt
+            (Visual structure)
+
+
+🎉 STATUS
+=========
+
+✅ COMPLETE AND READY FOR USE!
+
+Local Development: ✅ Ready
+Heroku Deployment: ✅ Ready
+Documentation: ✅ Complete
+Testing: ✅ Documented
+
+Next Steps:
+  1. Add service-account-key.json
+  2. Run ./setup.sh
+  3. Run ./run.sh
+  4. Deploy to Heroku (optional)
+
+Have fun browsing your BigQuery data! 🚀
+
+
+

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Metadata Browser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 60px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 50px;
+            font-size: 1.1em;
+        }
+
+        .options-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .option-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 40px 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            text-decoration: none;
+            display: block;
+        }
+
+        .option-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            border-color: #667eea;
+        }
+
+        .option-card.api {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+
+        .option-card.jdbc {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        }
+
+        .option-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .option-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .option-description {
+            color: #555;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .tech-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-top: 15px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .footer {
+            margin-top: 40px;
+            color: white;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .info-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .info-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .info-section p {
+            color: #666;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗄️ BigQuery Metadata Browser</h1>
+        <p class="subtitle">Compare REST API vs JDBC Connectivity</p>
+
+        <div class="options-container">
+            <a href="/api-metadata.html" class="option-card api">
+                <div class="option-icon">⚡</div>
+                <div class="option-title">Metadata Info with API</div>
+                <div class="option-description">
+                    Browse BigQuery metadata using Google Cloud REST API.
+                    Direct HTTP calls, fast and modern.
+                </div>
+                <div class="tech-badge">REST API v2</div>
+            </a>
+
+            <a href="/jdbc-metadata.html" class="option-card jdbc">
+                <div class="option-icon">🔌</div>
+                <div class="option-title">Metadata Info with JDBC</div>
+                <div class="option-description">
+                    Browse BigQuery metadata using JDBC-style interface.
+                    Traditional SQL approach with familiar patterns.
+                </div>
+                <div class="tech-badge">JDBC Pattern</div>
+            </a>
+        </div>
+
+        <div class="info-section">
+            <h3>📊 About This Application</h3>
+            <p>
+                This application demonstrates two different approaches to connecting to Google BigQuery:
+            </p>
+            <ul style="margin-top: 10px; margin-left: 20px; color: #666;">
+                <li><strong>API Approach:</strong> Uses Google Cloud BigQuery Client Library with REST API calls</li>
+                <li><strong>JDBC Approach:</strong> Uses traditional JDBC patterns for database connectivity</li>
+            </ul>
+            <p style="margin-top: 15px;">
+                <strong>Project:</strong> ehc-alberto-diazraya-35c897<br>
+                <strong>Backend:</strong> Java Spring Boot<br>
+                <strong>Frontend:</strong> HTML/CSS/JavaScript
+            </p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>IncidenciaBQ v1.0.0 | MercadoLibre</p>
+    </div>
+</body>
+</html>
