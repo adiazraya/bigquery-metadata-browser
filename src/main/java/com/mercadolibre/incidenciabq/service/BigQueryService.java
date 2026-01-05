@@ -6,8 +6,10 @@ import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.TableId;
 import com.mercadolibre.incidenciabq.config.BigQueryConfig;
+import com.mercadolibre.incidenciabq.config.SessionAwareCredentialsProvider;
 import com.mercadolibre.incidenciabq.model.Dataset;
 import com.mercadolibre.incidenciabq.model.Table;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,7 +23,9 @@ import java.util.List;
 public class BigQueryService {
 
     private final BigQueryConfig config;
-    private BigQuery bigQuery;
+    
+    @Autowired
+    private SessionAwareCredentialsProvider credentialsProvider;
 
     public BigQueryService(BigQueryConfig config) {
         this.config = config;
@@ -34,58 +38,45 @@ public class BigQueryService {
         log.info("[DETAIL] │ BACKEND: Initializing BigQuery Client");
         log.info("[DETAIL] ├─────────────────────────────────────────────────────");
         
-        if (bigQuery == null) {
-            try {
-                // Step 1: Load credentials
-                long credentialsStart = System.currentTimeMillis();
-                log.info("[DETAIL] │ Step 1: Loading service account credentials");
-                log.info("[DETAIL] │   → Key Path: {}", config.getServiceAccountKeyPath());
-                log.info("[DETAIL] │   → Project ID: {}", config.getProjectId());
-                log.info("[DETAIL] │   → Service Account: {}", config.getServiceAccountEmail());
-                
-                GoogleCredentials credentials = GoogleCredentials.fromStream(
-                    new FileInputStream(config.getServiceAccountKeyPath())
-                );
-                long credentialsTime = System.currentTimeMillis() - credentialsStart;
-                log.info("[TIMING] Credentials loaded in {} ms", credentialsTime);
-                log.info("[DETAIL] │   ✓ Credentials loaded successfully");
-                
-                // Step 2: Build BigQuery client
-                long clientStart = System.currentTimeMillis();
-                log.info("[DETAIL] │ Step 2: Building BigQuery client");
-                log.info("[DETAIL] │   → Creating BigQueryOptions builder");
-                log.info("[DETAIL] │   → Setting project: {}", config.getProjectId());
-                log.info("[DETAIL] │   → Attaching credentials");
-                
-                bigQuery = BigQueryOptions.newBuilder()
-                    .setProjectId(config.getProjectId())
-                    .setCredentials(credentials)
-                    .build()
-                    .getService();
-                long clientTime = System.currentTimeMillis() - clientStart;
-                
-                log.info("[DETAIL] │   ✓ BigQuery client built successfully");
-                log.info("[DETAIL] │   ✓ Ready to make API calls to BigQuery");
-                
-                long totalTime = System.currentTimeMillis() - startTime;
-                log.info("[TIMING] BigQuery client initialized in {} ms (credentials: {}ms, client: {}ms)", 
-                        totalTime, credentialsTime, clientTime);
-                log.info("[DETAIL] └─────────────────────────────────────────────────────");
-            } catch (IOException e) {
-                long totalTime = System.currentTimeMillis() - startTime;
-                log.error("[DETAIL] │   ✗ FAILED to initialize client");
-                log.error("[DETAIL] │   ✗ Error: {}", e.getMessage());
-                log.error("[DETAIL] └─────────────────────────────────────────────────────");
-                log.error("[TIMING] Failed to initialize BigQuery client after {} ms", totalTime, e);
-                throw e;
-            }
-        } else {
-            long totalTime = System.currentTimeMillis() - startTime;
-            log.info("[DETAIL] │ Using cached BigQuery client (already initialized)");
-            log.info("[DETAIL] │   ✓ No re-initialization needed");
-            log.info("[DETAIL] └─────────────────────────────────────────────────────");
-            log.info("[TIMING] Reusing existing BigQuery client ({}ms)", totalTime);
-        }
+        // Step 1: Load credentials (session-aware)
+        long credentialsStart = System.currentTimeMillis();
+        log.info("[DETAIL] │ Step 1: Loading service account credentials");
+        
+        String sessionId = credentialsProvider.getSessionId();
+        boolean hasCustom = credentialsProvider.hasSessionCredentials();
+        
+        log.info("[DETAIL] │   → Session ID: {}", sessionId);
+        log.info("[DETAIL] │   → Has Custom Credentials: {}", hasCustom);
+        log.info("[DETAIL] │   → Project ID: {}", config.getProjectId());
+        
+        GoogleCredentials credentials = credentialsProvider.getCredentials();
+        
+        long credentialsTime = System.currentTimeMillis() - credentialsStart;
+        log.info("[TIMING] Credentials loaded in {} ms", credentialsTime);
+        log.info("[DETAIL] │   ✓ Using {} credentials", hasCustom ? "session-specific" : "default");
+        log.info("[DETAIL] │   ✓ Credentials loaded successfully");
+        
+        // Step 2: Build BigQuery client (always fresh for session-specific credentials)
+        long clientStart = System.currentTimeMillis();
+        log.info("[DETAIL] │ Step 2: Building BigQuery client");
+        log.info("[DETAIL] │   → Creating BigQueryOptions builder");
+        log.info("[DETAIL] │   → Setting project: {}", config.getProjectId());
+        log.info("[DETAIL] │   → Attaching credentials");
+        
+        BigQuery bigQuery = BigQueryOptions.newBuilder()
+            .setProjectId(config.getProjectId())
+            .setCredentials(credentials)
+            .build()
+            .getService();
+        long clientTime = System.currentTimeMillis() - clientStart;
+        
+        log.info("[DETAIL] │   ✓ BigQuery client built successfully");
+        log.info("[DETAIL] │   ✓ Ready to make API calls to BigQuery");
+        
+        long totalTime = System.currentTimeMillis() - startTime;
+        log.info("[TIMING] BigQuery client initialized in {} ms (credentials: {}ms, client: {}ms)", 
+                totalTime, credentialsTime, clientTime);
+        log.info("[DETAIL] └─────────────────────────────────────────────────────");
         
         return bigQuery;
     }

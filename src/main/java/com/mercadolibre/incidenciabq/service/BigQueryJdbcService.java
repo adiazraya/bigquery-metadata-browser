@@ -1,10 +1,12 @@
 package com.mercadolibre.incidenciabq.service;
 
+import com.mercadolibre.incidenciabq.config.SessionAwareCredentialsProvider;
 import com.mercadolibre.incidenciabq.model.Dataset;
 import com.mercadolibre.incidenciabq.model.Table;
 import com.mercadolibre.incidenciabq.model.Field;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -34,9 +36,12 @@ public class BigQueryJdbcService {
 
     @Value("${bigquery.service.account.key.path}")
     private String serviceAccountKeyPath;
+    
+    @Autowired
+    private SessionAwareCredentialsProvider credentialsProvider;
 
     /**
-     * Get JDBC connection to BigQuery
+     * Get JDBC connection to BigQuery using session-aware credentials
      * Note: This will work once SIMBA driver is installed
      */
     private Connection getConnection() throws SQLException {
@@ -47,6 +52,22 @@ public class BigQueryJdbcService {
         logger.info("[DETAIL][JDBC] ├─────────────────────────────────────────────────────");
         
         try {
+            // Get session-aware credentials path
+            String sessionId = credentialsProvider.getSessionId();
+            boolean hasCustom = credentialsProvider.hasSessionCredentials();
+            
+            String keyPath;
+            if (hasCustom) {
+                // Use session-specific key path
+                keyPath = "./session-credentials/service-account-" + sessionId + ".json";
+                logger.info("[DETAIL][JDBC] │   → Using SESSION-SPECIFIC credentials");
+                logger.info("[DETAIL][JDBC] │   → Session ID: {}", sessionId);
+            } else {
+                // Use default key path
+                keyPath = serviceAccountKeyPath;
+                logger.info("[DETAIL][JDBC] │   → Using DEFAULT credentials");
+            }
+            
             String jdbcUrl = String.format(
                 "jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;" +
                 "ProjectId=%s;" +
@@ -55,17 +76,19 @@ public class BigQueryJdbcService {
                 "OAuthPvtKeyPath=%s;",
                 projectId,
                 serviceAccountEmail,
-                serviceAccountKeyPath
+                keyPath
             );
             
             logger.info("[DETAIL][JDBC] │ Step 1: Creating JDBC connection");
             logger.info("[DETAIL][JDBC] │   → Driver: Simba BigQuery JDBC");
             logger.info("[DETAIL][JDBC] │   → Project: {}", projectId);
+            logger.info("[DETAIL][JDBC] │   → Key Path: {}", keyPath);
             
             Connection conn = DriverManager.getConnection(jdbcUrl);
             
             long totalTime = System.currentTimeMillis() - startTime;
             logger.info("[DETAIL][JDBC] │   ✓ Connection acquired successfully");
+            logger.info("[DETAIL][JDBC] │   ✓ Using {} credentials", hasCustom ? "session-specific" : "default");
             logger.info("[DETAIL][JDBC] └─────────────────────────────────────────────────────");
             logger.info("[TIMING][JDBC] Connection acquired in {} ms", totalTime);
             
