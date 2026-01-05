@@ -25,7 +25,38 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Default to current/latest version -->
+        <simba.jdbc.jar>GoogleBigQueryJDBC42-current.jar</simba.jdbc.jar>
     </properties>
+
+    <profiles>
+        <!-- Profile for current/latest Simba JDBC driver version -->
+        <profile>
+            <id>simba-current</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <simba.jdbc.jar>GoogleBigQueryJDBC42-current.jar</simba.jdbc.jar>
+            </properties>
+        </profile>
+
+        <!-- Profile for Simba JDBC driver version 1.6.1.1002 (older) -->
+        <profile>
+            <id>simba-1.6.1</id>
+            <properties>
+                <simba.jdbc.jar>GoogleBigQueryJDBC42-1.6.1.1002.jar</simba.jdbc.jar>
+            </properties>
+        </profile>
+
+        <!-- Profile to use the original JAR name (backward compatibility) -->
+        <profile>
+            <id>simba-default</id>
+            <properties>
+                <simba.jdbc.jar>GoogleBigQueryJDBC42.jar</simba.jdbc.jar>
+            </properties>
+        </profile>
+    </profiles>
 
     <dependencies>
         <dependency>
@@ -33,7 +64,7 @@
             <artifactId>googlebigquery-jdbc</artifactId>
             <version>1.6.5</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/lib/GoogleBigQueryJDBC42.jar</systemPath>
+            <systemPath>${project.basedir}/lib/${simba.jdbc.jar}</systemPath>
         </dependency>
         <!-- Spring Boot Starter Web -->
         <dependency>
