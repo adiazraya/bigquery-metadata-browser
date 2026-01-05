@@ -57,15 +57,12 @@
             </properties>
         </profile>
 
-        <!-- Profile for Heroku deployment (no JDBC driver) -->
+        <!-- Profile to use the original JAR name (backward compatibility) -->
         <profile>
-            <id>heroku</id>
-            <activation>
-                <property>
-                    <name>env.DYNO</name>
-                </property>
-            </activation>
-            <!-- No JDBC dependency on Heroku - REST API only -->
+            <id>simba-default</id>
+            <properties>
+                <simba.jdbc.jar>GoogleBigQueryJDBC42.jar</simba.jdbc.jar>
+            </properties>
         </profile>
     </profiles>
 
@@ -76,7 +73,6 @@
             <version>1.6.5</version>
             <scope>system</scope>
             <systemPath>${project.basedir}/lib/${simba.jdbc.jar}</systemPath>
-            <optional>true</optional>
         </dependency>
         <!-- Spring Boot Starter Web -->
         <dependency>

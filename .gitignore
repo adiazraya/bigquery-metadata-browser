@@ -40,4 +40,6 @@ dist/
 out/
 
 # Application specific
-lib/*.jar
+# Note: Simba JDBC driver JARs are tracked for Heroku deployment
+# lib/*.jar is commented out to allow Simba drivers
+#lib/*.jar
