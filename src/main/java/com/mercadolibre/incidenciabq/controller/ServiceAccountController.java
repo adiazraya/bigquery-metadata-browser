@@ -1,8 +1,8 @@
 package com.mercadolibre.incidenciabq.controller;
 
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.mercadolibre.incidenciabq.config.BigQueryConfig;
+import com.mercadolibre.incidenciabq.service.SessionCredentialsManager;
+import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,14 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.ByteArrayInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 /**
@@ -34,12 +28,15 @@ public class ServiceAccountController {
     @Autowired
     private BigQueryConfig config;
 
+    @Autowired
+    private SessionCredentialsManager sessionCredentialsManager;
+
     /**
      * Get information about the current service account
      * Returns non-sensitive information like email, project ID, and permission requirements
      */
     @GetMapping("/info")
-    public ResponseEntity<Map<String, Object>> getServiceAccountInfo() {
+    public ResponseEntity<Map<String, Object>> getServiceAccountInfo(HttpSession session) {
         logger.info("╔══════════════════════════════════════════════════════════");
         logger.info("║ GET SERVICE ACCOUNT INFO");
         logger.info("╚══════════════════════════════════════════════════════════");
@@ -47,38 +44,23 @@ public class ServiceAccountController {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            String keyPath = config.getServiceAccountKeyPath();
-            logger.info("Reading service account from: {}", keyPath);
-
-            // Load credentials from file
-            GoogleCredentials credentials;
-            try (java.io.FileInputStream serviceAccountStream = new java.io.FileInputStream(keyPath)) {
-                credentials = GoogleCredentials.fromStream(serviceAccountStream);
-            }
+            // Get session-specific or default credentials info
+            Map<String, Object> credentialsInfo = sessionCredentialsManager.getSessionCredentialsInfo(
+                session, config.getServiceAccountKeyPath()
+            );
             
-            if (credentials instanceof ServiceAccountCredentials) {
-                ServiceAccountCredentials serviceAccountCredentials = (ServiceAccountCredentials) credentials;
-                
-                response.put("status", "active");
-                response.put("serviceAccountEmail", serviceAccountCredentials.getClientEmail());
-                response.put("projectId", serviceAccountCredentials.getProjectId());
-                response.put("keyPath", keyPath);
-                response.put("keyExists", Files.exists(Paths.get(keyPath)));
-                
-                logger.info("Service Account Email: {}", serviceAccountCredentials.getClientEmail());
-                logger.info("Project ID: {}", serviceAccountCredentials.getProjectId());
-            } else {
-                response.put("status", "active");
-                response.put("credentialsType", credentials.getClass().getSimpleName());
-                response.put("projectId", config.getProjectId());
-                response.put("keyPath", keyPath);
-            }
-
+            response.putAll(credentialsInfo);
+            response.put("status", "active");
+            response.put("defaultKeyPath", config.getServiceAccountKeyPath());
+            
             // Add permission requirements
             response.put("requiredPermissions", getRequiredPermissions());
             response.put("permissionGuide", getPermissionGuide());
 
             logger.info("✓ Service account info retrieved successfully");
+            logger.info("  Session ID: {}", credentialsInfo.get("sessionId"));
+            logger.info("  Source: {}", credentialsInfo.get("credentialsSource"));
+            
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
@@ -97,7 +79,8 @@ public class ServiceAccountController {
      */
     @PostMapping("/upload")
     public ResponseEntity<Map<String, Object>> uploadServiceAccountKey(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            HttpSession session) {
         
         logger.info("╔══════════════════════════════════════════════════════════");
         logger.info("║ UPLOAD NEW SERVICE ACCOUNT KEY");
@@ -112,55 +95,32 @@ public class ServiceAccountController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // Validate JSON format
+            // Get file content
             String content = new String(file.getBytes(), StandardCharsets.UTF_8);
             logger.info("Validating service account key JSON...");
 
-            // Try to parse as ServiceAccountCredentials
-            GoogleCredentials credentials = GoogleCredentials.fromStream(
-                new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))
-            );
-
-            if (!(credentials instanceof ServiceAccountCredentials)) {
+            // Save to session-specific location
+            Map<String, Object> saveResult = sessionCredentialsManager.saveSessionCredentials(session, content);
+            
+            if (!(Boolean) saveResult.get("success")) {
                 response.put("status", "error");
-                response.put("message", "Invalid service account key format");
+                response.put("message", saveResult.get("message"));
                 return ResponseEntity.badRequest().body(response);
             }
 
-            ServiceAccountCredentials serviceAccountCredentials = (ServiceAccountCredentials) credentials;
-            String email = serviceAccountCredentials.getClientEmail();
-            String projectId = serviceAccountCredentials.getProjectId();
-
-            logger.info("Valid service account key detected:");
-            logger.info("  • Email: {}", email);
-            logger.info("  • Project ID: {}", projectId);
-
-            // Save to a new location (don't overwrite the original)
-            String newKeyPath = "./service-account-key-new.json";
-            Path targetPath = Paths.get(newKeyPath);
-            
-            try (FileOutputStream fos = new FileOutputStream(targetPath.toFile())) {
-                fos.write(content.getBytes(StandardCharsets.UTF_8));
-            }
-
-            logger.info("✓ New service account key saved to: {}", newKeyPath);
-            logger.info("");
-            logger.info("⚠️  IMPORTANT: To activate this new service account:");
-            logger.info("   1. Rename 'service-account-key.json' to 'service-account-key-backup.json'");
-            logger.info("   2. Rename 'service-account-key-new.json' to 'service-account-key.json'");
-            logger.info("   3. Restart the application");
-            logger.info("   OR set GOOGLE_APPLICATION_CREDENTIALS environment variable");
+            logger.info("✓ Service account key saved for session: {}", saveResult.get("sessionId"));
 
             response.put("status", "uploaded");
-            response.put("message", "Service account key uploaded successfully");
-            response.put("serviceAccountEmail", email);
-            response.put("projectId", projectId);
-            response.put("savedTo", newKeyPath);
+            response.put("message", "Service account uploaded successfully for your session");
+            response.put("serviceAccountEmail", saveResult.get("serviceAccountEmail"));
+            response.put("projectId", saveResult.get("projectId"));
+            response.put("sessionId", saveResult.get("sessionId"));
+            response.put("savedTo", saveResult.get("savedTo"));
             response.put("nextSteps", Arrays.asList(
-                "Verify the service account has the required BigQuery permissions",
-                "Backup your current service-account-key.json file",
-                "Rename service-account-key-new.json to service-account-key.json",
-                "Restart the application or update GOOGLE_APPLICATION_CREDENTIALS"
+                "✅ Your service account is now active for YOUR SESSION only",
+                "Other users' sessions are not affected",
+                "Test your permissions using the buttons below",
+                "Your credentials will persist for this browser session"
             ));
             response.put("requiredPermissions", getRequiredPermissions());
 
@@ -185,7 +145,8 @@ public class ServiceAccountController {
      */
     @PostMapping("/update")
     public ResponseEntity<Map<String, Object>> updateServiceAccountKey(
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> request,
+            HttpSession session) {
         
         logger.info("╔══════════════════════════════════════════════════════════");
         logger.info("║ UPDATE SERVICE ACCOUNT KEY FROM JSON");
@@ -204,55 +165,33 @@ public class ServiceAccountController {
 
             logger.info("Validating service account key JSON...");
 
-            // Try to parse as ServiceAccountCredentials
-            GoogleCredentials credentials = GoogleCredentials.fromStream(
-                new ByteArrayInputStream(jsonContent.getBytes(StandardCharsets.UTF_8))
-            );
-
-            if (!(credentials instanceof ServiceAccountCredentials)) {
+            // Save to session-specific location
+            Map<String, Object> saveResult = sessionCredentialsManager.saveSessionCredentials(session, jsonContent);
+            
+            if (!(Boolean) saveResult.get("success")) {
                 response.put("status", "error");
-                response.put("message", "Invalid service account key format");
+                response.put("message", saveResult.get("message"));
                 return ResponseEntity.badRequest().body(response);
             }
 
-            ServiceAccountCredentials serviceAccountCredentials = (ServiceAccountCredentials) credentials;
-            String email = serviceAccountCredentials.getClientEmail();
-            String projectId = serviceAccountCredentials.getProjectId();
-
-            logger.info("Valid service account key detected:");
-            logger.info("  • Email: {}", email);
-            logger.info("  • Project ID: {}", projectId);
-
-            // Save to a new location
-            String newKeyPath = "./service-account-key-new.json";
-            Path targetPath = Paths.get(newKeyPath);
-            
-            try (FileOutputStream fos = new FileOutputStream(targetPath.toFile())) {
-                fos.write(jsonContent.getBytes(StandardCharsets.UTF_8));
-            }
-
-            logger.info("✓ New service account key saved to: {}", newKeyPath);
+            logger.info("✓ Service account key updated for session: {}", saveResult.get("sessionId"));
 
             response.put("status", "uploaded");
-            response.put("message", "Service account key updated successfully");
-            response.put("serviceAccountEmail", email);
-            response.put("projectId", projectId);
-            response.put("savedTo", newKeyPath);
+            response.put("message", "Service account updated successfully for your session");
+            response.put("serviceAccountEmail", saveResult.get("serviceAccountEmail"));
+            response.put("projectId", saveResult.get("projectId"));
+            response.put("sessionId", saveResult.get("sessionId"));
+            response.put("savedTo", saveResult.get("savedTo"));
             response.put("nextSteps", Arrays.asList(
-                "Verify the service account has the required BigQuery permissions",
-                "Backup your current service-account-key.json file",
-                "Rename service-account-key-new.json to service-account-key.json",
-                "Restart the application"
+                "✅ Your service account is now active for YOUR SESSION only",
+                "Other users' sessions are not affected",
+                "Test your permissions using the buttons below",
+                "Your credentials will persist for this browser session"
             ));
             response.put("requiredPermissions", getRequiredPermissions());
 
             return ResponseEntity.ok(response);
 
-        } catch (IOException e) {
-            logger.error("✗ Error updating service account key: {}", e.getMessage());
-            response.put("status", "error");
-            response.put("message", "Invalid service account key JSON: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
             logger.error("✗ Unexpected error: {}", e.getMessage());
             response.put("status", "error");

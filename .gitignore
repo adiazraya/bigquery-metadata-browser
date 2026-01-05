@@ -24,6 +24,9 @@ logs/
 # Service account key (IMPORTANT - keep private!)
 *.json
 
+# Session-specific credentials (per-user service accounts)
+session-credentials/
+
 # Maven
 .mvn/
 mvnw
