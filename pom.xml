@@ -56,14 +56,6 @@
                 <simba.jdbc.jar>GoogleBigQueryJDBC42.jar</simba.jdbc.jar>
             </properties>
         </profile>
-
-        <!-- Profile to use the original JAR name (backward compatibility) -->
-        <profile>
-            <id>simba-default</id>
-            <properties>
-                <simba.jdbc.jar>GoogleBigQueryJDBC42.jar</simba.jdbc.jar>
-            </properties>
-        </profile>
     </profiles>
 
     <dependencies>
