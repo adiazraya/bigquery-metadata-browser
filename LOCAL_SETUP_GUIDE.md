@@ -270,6 +270,72 @@ Use this checklist to verify everything is working:
 
 ---
 
+## 🔄 Advanced: Switching Simba JDBC Driver Versions
+
+The project includes **two versions** of the Simba JDBC driver. You might want to use the older version if you encounter 403 Forbidden errors.
+
+### Available Versions
+
+| Version | File | Size | Use Case |
+|---------|------|------|----------|
+| **1.6.5.1001** (default) | `GoogleBigQueryJDBC42-current.jar` | 3.7 MB | Latest features |
+| **1.6.1.1002** (older) | `GoogleBigQueryJDBC42-1.6.1.1002.jar` | 1.5 MB | Fixes 403 errors |
+
+### How to Build with Older Driver (1.6.1.1002)
+
+**Option A: Using the helper script (easiest):**
+```bash
+# Build and run with older Simba driver
+./run.sh simba-1.6.1
+```
+
+**Option B: Using Maven profiles directly:**
+```bash
+# Build with older driver
+mvn clean package -DskipTests -Psimba-1.6.1
+
+# Run the application
+java -jar target/incidencia-bq-1.0.0.jar
+```
+
+**Option C: Switch back to latest driver:**
+```bash
+# Build with latest driver (default)
+mvn clean package -DskipTests -Psimba-current
+
+# Or just
+mvn clean package -DskipTests
+```
+
+### When to Use Each Version
+
+**Use 1.6.5.1001 (current/default):**
+- ✅ For most use cases
+- ✅ Latest bug fixes and features
+- ✅ Better performance
+- ⚠️  May trigger 403 errors with restrictive IAM permissions
+
+**Use 1.6.1.1002 (older):**
+- ✅ When you encounter 403 Forbidden errors
+- ✅ When working with minimal BigQuery permissions
+- ✅ Legacy compatibility requirements
+- ⚠️  Slightly older feature set
+
+### Quick Reference: Maven Profiles
+
+```bash
+# Default (latest driver - 1.6.5.1001)
+mvn clean package -DskipTests
+
+# Older driver (1.6.1.1002) - for 403 fixes
+mvn clean package -DskipTests -Psimba-1.6.1
+
+# Explicitly use current driver
+mvn clean package -DskipTests -Psimba-current
+```
+
+---
+
 ## 🎨 Additional Features
 
 ### Service Account Manager
@@ -320,7 +386,7 @@ lsof -ti:8080 | xargs kill
 server.port=8081
 ```
 
-### Issue: Can't connect to BigQuery
+### Issue: Can't connect to BigQuery (403 Forbidden)
 
 **Error message:**
 ```
@@ -328,9 +394,21 @@ Failed to list datasets
 403 Forbidden
 ```
 
-**Solutions:**
+**This is a common issue with the JDBC driver!**
 
-1. **Check service account permissions:**
+**Solutions (try in order):**
+
+1. **Switch to older Simba driver (RECOMMENDED FIRST):**
+   ```bash
+   # Rebuild with older driver version
+   mvn clean package -DskipTests -Psimba-1.6.1
+   
+   # Or use helper script
+   ./run.sh simba-1.6.1
+   ```
+   The older driver (1.6.1.1002) is more compatible with restrictive permissions.
+
+2. **Check service account permissions:**
    - Service account must have these roles:
      - `roles/bigquery.metadataViewer`
      - `roles/bigquery.jobUser`
@@ -421,11 +499,18 @@ Once you have the application running, check these files for more information:
 ## 🚀 Quick Commands Reference
 
 ```bash
-# Build the project
+# Build the project (default - latest Simba driver)
 mvn clean package -DskipTests
+
+# Build with older Simba driver (for 403 errors)
+mvn clean package -DskipTests -Psimba-1.6.1
 
 # Run the application
 ./run.sh
+
+# Run with specific Simba driver version
+./run.sh simba-1.6.1      # Older driver
+./run.sh simba-current    # Latest driver
 
 # Stop the application
 # Press Ctrl+C in the terminal
